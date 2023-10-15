@@ -1,4 +1,5 @@
 import argparse
+import random
 import torch
 import numpy as np
 
@@ -6,6 +7,7 @@ from torch.utils.data import Subset, DataLoader
 from sklearn.model_selection import KFold
 from data.builder import DatasetBuilder
 from utils.dataset_util import split_dataset
+from utils.ops import initialize_weights, init_seeds
 
 
 def prepare_trainer(model, params):
@@ -91,6 +93,7 @@ def main(args):
     trainer_param = load_trainer_param()
     # 网络
     net = None
+    net.apply(initialize_weights)
     # 优化器、学习率管理
     optimizer, lr_scheduler = prepare_trainer(net, trainer_param)
 
@@ -121,14 +124,8 @@ def main(args):
         train(train_dataloader, valid_dataloader, args.epochs, args.lr)
 
 
-def init_setting(randm_seed=0):
-    np.random.seed(randm_seed)
-    torch.manual_seed(randm_seed)  # cpu
-    torch.cuda.manual_seed(randm_seed)  # gpu
-
-
 def parse_opt():
-    init_setting()
+    init_seeds()
     parser = argparse.ArgumentParser()
 
     parser.add_argument('--model', type=str, default='', help='网络模型')
