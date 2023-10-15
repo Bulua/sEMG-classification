@@ -57,11 +57,11 @@ def prepare_trainer(model, params):
 
 def train(net,
           optimizer,
+          lr_scheduler,
           batch_size,
           train_dataloader, 
           valid_dataloader, 
           epochs,
-          lr,
           device,
           ):
     
