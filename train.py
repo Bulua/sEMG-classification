@@ -1,48 +1,103 @@
 import argparse
-
 import torch
 import numpy as np
 
 from torch.utils.data import Subset, DataLoader
 from sklearn.model_selection import KFold
-from data.datasets import RowDataset, TimeFeatureDataset
+from data.builder import DatasetBuilder
 from utils.dataset_util import split_dataset
 
 
-def train(train_dataloader, 
+def prepare_trainer(model,
+                    optimizer_name,
+                    weight_decay,
+                    momentum,
+                    lr_mode,
+                    lr,
+                    lr_decay_period,
+                    lr_decay_epoch,
+                    lr_decay,
+                    epochs,
+                    state_file_path):
+    """
+    准备 trainer.
+
+    Parameters:
+    ----------
+    model : Module
+        Model.
+    optimizer_name : str
+        Name of optimizer.
+    weight_decay : float
+        Weight decay rate.
+    momentum : float
+        Momentum value.
+    lr_mode : str
+        Learning rate scheduler mode.
+    lr : float
+        Learning rate.
+    lr_decay_period : int
+        Interval for periodic learning rate decays.
+    lr_decay_epoch : str
+        Epoches at which learning rate decays.
+    lr_decay : float
+        Decay rate of learning rate.
+    num_epochs : int
+        Number of training epochs.
+    state_file_path : str
+        Path for file with trainer state.
+
+    Returns:
+    -------
+    Optimizer
+        Optimizer.
+    LRScheduler
+        Learning rate scheduler.
+    int
+        Start epoch.
+    """
+    optimizer_name = optimizer_name.lower()
+    if optimizer_name == 'sgd':
+        optimizer = torch.optim.SGD(
+            params=model.parameters(),
+            lr=lr,
+            momentum=momentum,
+            weight_decay=weight_decay,
+        )
+    elif optimizer_name == 'adam':
+        optimizer = torch.optim.Adam(
+            params=model.parameters(),
+            lr=lr,
+            momentum=momentum,
+            weight_decay=weight_decay,
+        )
+    elif optimizer_name == '':
+        optimizer = torch.optim.AdamW(
+            params=model.parameters(),
+            lr=lr,
+            momentum=momentum,
+            weight_decay=weight_decay,
+        )
+    else:
+        raise ValueError("未被支持的optimizer: {}".format(optimizer_name))
+    return optimizer
+
+def train(net,
+          optimizer,
+          batch_size,
+          train_dataloader, 
           valid_dataloader, 
           epochs,
           lr,
+          device,
           ):
+    
     pass
 
 
 def main(args):
-    dataset = None
-    if args.features == 'row':
-        dataset = RowDataset(args.data_path, 
-                            args.subjects, 
-                            args.classes,
-                            args.window, 
-                            args.stride, 
-                            args.normalization,
-                            args.denoise,
-                            args.save_action_detect_result,
-                            args.save_processing_result,
-                            args.verbose)
-    else:
-        dataset = TimeFeatureDataset(
-                            args.data_path,
-                            args.subjects,
-                            args.classes,
-                            args.features,
-                            args.window, 
-                            args.stride, 
-                            args.normalization,
-                            args.denoise,
-                            args.save_action_detect_result,
-                            args.save_processing_result,
-                            args.verbose)
+    dataset_builder = DatasetBuilder(args)
+    dataset = dataset_builder.builder()
 
     if args.cross_validation > 1:
         k_fold = KFold(n_splits=args.cross_validation)
@@ -97,8 +152,8 @@ def parse_opt():
     parser.add_argument('--normalization', type=str, default='z-zero', help='数据标准化方法, min-max, z-zero')
     parser.add_argument('--active_signal_detect', type=str, default='', help='活动段检测方法, ...')
     parser.add_argument('--features', 
-                        default=['MAV', 'WMAV','SSC','ZC','WA','WL',
-                                'RMS','STD','SSI','VAR','AAC','MEAN'], 
+                        # default='row',
+                        default=['MAV', 'WMAV','SSC','ZC','WA','WL', 'RMS','STD','SSI','VAR','AAC','MEAN'], 
                         help="特征提取方法, \
                         原始特征: row, \
                         时域特征：['MAV', 'WMAV','SSC','ZC','WA','WL','RMS','STD','SSI','VAR','AAC','EAN']")

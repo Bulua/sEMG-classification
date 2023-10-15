@@ -5,8 +5,8 @@ import numpy as np
 
 
 
-
-print(torch.__version__)
+assert 1 == 2, '1 != 2'
+# print(torch.__version__)
 # def normalization(data):
 #     mean = np.mean(data, axis=0)
 #     std = np.std(data, axis=0)
