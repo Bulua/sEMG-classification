@@ -8,79 +8,52 @@ from data.builder import DatasetBuilder
 from utils.dataset_util import split_dataset
 
 
-def prepare_trainer(model,
-                    optimizer_name,
-                    weight_decay,
-                    momentum,
-                    lr_mode,
-                    lr,
-                    lr_decay_period,
-                    lr_decay_epoch,
-                    lr_decay,
-                    epochs,
-                    state_file_path):
-    """
-    准备 trainer.
-
-    Parameters:
-    ----------
-    model : Module
-        Model.
-    optimizer_name : str
-        Name of optimizer.
-    weight_decay : float
-        Weight decay rate.
-    momentum : float
-        Momentum value.
-    lr_mode : str
-        Learning rate scheduler mode.
-    lr : float
-        Learning rate.
-    lr_decay_period : int
-        Interval for periodic learning rate decays.
-    lr_decay_epoch : str
-        Epoches at which learning rate decays.
-    lr_decay : float
-        Decay rate of learning rate.
-    num_epochs : int
-        Number of training epochs.
-    state_file_path : str
-        Path for file with trainer state.
-
-    Returns:
-    -------
-    Optimizer
-        Optimizer.
-    LRScheduler
-        Learning rate scheduler.
-    int
-        Start epoch.
-    """
-    optimizer_name = optimizer_name.lower()
+def prepare_trainer(model, params):
+    optimizer_name = params['optim'].lower()
     if optimizer_name == 'sgd':
         optimizer = torch.optim.SGD(
             params=model.parameters(),
-            lr=lr,
-            momentum=momentum,
-            weight_decay=weight_decay,
+            lr=params['lr'],
+            momentum=params['momentum'],
+            weight_decay=params['weight_decay'],
         )
     elif optimizer_name == 'adam':
         optimizer = torch.optim.Adam(
             params=model.parameters(),
-            lr=lr,
-            momentum=momentum,
-            weight_decay=weight_decay,
+            lr=params['lr'],
+            weight_decay=params['weight_decay'],
         )
-    elif optimizer_name == '':
+    elif optimizer_name == 'adamw':
         optimizer = torch.optim.AdamW(
             params=model.parameters(),
-            lr=lr,
-            momentum=momentum,
-            weight_decay=weight_decay,
+            lr=params['lr'],
+            weight_decay=params['weight_decay'],
         )
     else:
         raise ValueError("未被支持的optimizer: {}".format(optimizer_name))
-    return optimizer
+    
+    lr_mode = params['lr_mode'].lower()
+    if lr_mode == 'StepLR':
+        lr_scheduler = torch.optim.lr_scheduler.StepLR(
+            optimizer=optimizer,
+            step_size=params['lr_decay_period'],
+            gamma=params['lr_decay'],
+            last_epoch=-1
+        )
+    elif lr_mode == 'CosineAnnealingLR':
+        lr_scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(
+            optimizer=optimizer,
+            T_max=params['epochs'],
+            last_epoch=-1)
+    elif lr_mode == 'ExponentialLR':
+        lr_scheduler = torch.optim.lr_scheduler.ExponentialLR(
+            optimizer=optimizer,
+            gamma=params['lr_decay'],
+            last_epoch=-1
+        )
+    else:
+        raise ValueError("未被支持的lr_mode: {}".format(lr_mode))
+    return optimizer, lr_scheduler
 
 def train(net,
           optimizer,
@@ -95,9 +68,31 @@ def train(net,
     pass
 
 
+def load_trainer_param():
+    params = {
+        'epochs': 100,
+        'batch_size': 64,
+        'lr': 0.001,
+        'optimizer': 'adam',    # sgd、adam、adamw
+        'lr_model': 'StepLR',   # ExponentialLR、StepLR、CosineAnnealingLR
+        'weight_decay': 0.95,   
+        'momentum': 0.9,
+        'lr_decay_period': 20,  # 学习率衰减周期
+    }
+    return params
+
+
 def main(args):
+    # 构建数据集
     dataset_builder = DatasetBuilder(args)
     dataset = dataset_builder.builder()
+
+    # 获取训练参数
+    trainer_param = load_trainer_param()
+    # 网络
+    net = None
+    # 优化器、学习率管理
+    optimizer, lr_scheduler = prepare_trainer(net, trainer_param)
 
     if args.cross_validation > 1:
         k_fold = KFold(n_splits=args.cross_validation)
@@ -131,8 +126,6 @@ def init_setting(randm_seed=0):
     torch.manual_seed(randm_seed)  # cpu
     torch.cuda.manual_seed(randm_seed)  # gpu
 
-    # np.set_printoptions(threshold=np.inf)
-
 
 def parse_opt():
     init_setting()
@@ -159,11 +152,6 @@ def parse_opt():
                         时域特征：['MAV', 'WMAV','SSC','ZC','WA','WL','RMS','STD','SSI','VAR','AAC','EAN']")
     parser.add_argument('--window', type=int, default=200, help='滑动窗口长度')
     parser.add_argument('--stride', type=int, default=100, help='滑动窗口步长')
-
-    parser.add_argument('--epochs', type=int, default=100, help='迭代次数')
-    parser.add_argument('--lr', type=float, default=0.001, help='学习率')
-    parser.add_argument('--batch_size', type=int, default=64, help='批次大小')
-    parser.add_argument('--optimzer', type=str, default='adam', help='优化器, 可选: adam, sgd')
     parser.add_argument('--cross_validation', default=5, help='是否采用交叉验证, <=1为不采用, >1采用')
 
     parser.add_argument('--save_action_detect_result', type=bool, default=True, help='是否保存活动段检测结果图')
