@@ -19,6 +19,7 @@ class DatasetBuilder:
                             self.args.denoise,
                             self.args.save_action_detect_result,
                             self.args.save_processing_result,
+                            self.args.save_data,
                             self.args.verbose)
         else:
             dataset = TimeFeatureDataset(
@@ -32,5 +33,6 @@ class DatasetBuilder:
                             self.args.denoise,
                             self.args.save_action_detect_result,
                             self.args.save_processing_result,
+                            self.args.save_data,
                             self.args.verbose)
         return dataset

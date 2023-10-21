@@ -1,8 +1,12 @@
+import os
 import torch
 import torch.nn as nn
 import numpy as np
 
+from tqdm import tqdm
+from os.path import join
 from .base import BaseDataset
+from utils.path_util import PROJECT_PATH, DATA_PATH, create_dir
 from utils.features import MAV, WMAV, SSC, ZC, WA, WL, RMS, STD, SSI, VAR, AAC, MEAN
 
 
@@ -18,6 +22,7 @@ class RowDataset(BaseDataset):
                 denoise,
                 save_action_detect_result, 
                 save_processing_result,
+                save_data,
                 verbose):
         '''
         dataset_path: /autodl-tmp/resources/dataset/dzp
@@ -30,8 +35,9 @@ class RowDataset(BaseDataset):
                                         denoise, 
                                         save_action_detect_result, 
                                         save_processing_result, 
+                                        save_data,
                                         verbose)
-        self.window = window
+        self.window = int(window / 1000 * self.sample_rate)
         self.stride = stride
         
         # 父类BaseDataset包含 self.signal, self.labels
@@ -40,6 +46,23 @@ class RowDataset(BaseDataset):
         if self.verbose:
             print('原始肌电图处理结果, 生成肌电图像: {}, 生成标签: {}'
                     .format(self.images.shape, self.image_labels.shape))
+        if save_data:
+            self.save_row(self.images, self.image_labels)
+
+    def save_row(self, datas, labels):
+        assert len(self.subjects) == 1 , '仅能保存一个人的原始数据,多人数据请设置save_data=False...'
+
+        for subject in tqdm(self.subjects, 
+                            desc='save row image data', 
+                            total=len(self.subjects),
+                            leave=True):
+            p = create_dir(join(DATA_PATH, subject))
+
+            if not os.path.exists(join(p, 'images.npy')):
+                np.save(join(p, 'images.npy'), datas)
+            if not os.path.exists(join(p, 'image_labels.npy')):   
+                np.save(join(p, 'image_labels.npy'), labels)
+        print('row image数据保存完毕!')
 
     def sliding_window(self):
         tms = self.signal.shape[0]
@@ -78,6 +101,7 @@ class TimeFeatureDataset(BaseDataset):
                 denoise, 
                 save_action_detect_result,
                 save_processing_result,
+                save_data,
                 verbose):
         '''
             feature: 
@@ -93,9 +117,10 @@ class TimeFeatureDataset(BaseDataset):
                                                  denoise, 
                                                  save_action_detect_result, 
                                                  save_processing_result,
+                                                 save_data,
                                                  verbose)
 
-        self.window = window
+        self.window = int(window / 1000 * self.sample_rate)
         self.stride = stride
         self.features = features
         # 父类BaseDataset包含 self.signal, self.labels
@@ -104,7 +129,24 @@ class TimeFeatureDataset(BaseDataset):
         if self.verbose:
             print('特征图处理结果, 生成特征图像: {}, 生成标签: {}'
                     .format(self.feature_images.shape, self.feature_image_labels.shape))
-    
+        if save_data:
+            self.save_features(self.feature_images, self.feature_image_labels)
+
+    def save_features(self, datas, labels):
+        assert len(self.subjects) == 1 , '仅能保存一个人的时域数据,多人数据请设置save_data=False...'
+
+        for subject in tqdm(self.subjects, 
+                            desc='save time-features data', 
+                            total=len(self.subjects),
+                            leave=True):
+            p = create_dir(join(DATA_PATH, subject))
+
+            if not os.path.exists(join(p, 'feature_images.npy')):
+                np.save(join(p, 'feature_images.npy'), datas)
+            if not os.path.exists(join(p, 'feature_image_labels.npy')):   
+                np.save(join(p, 'feature_image_labels.npy'), labels)
+        print('time-features数据保存完毕!')
+
     def sliding_window(self):
         tms = self.signal.shape[0]
         cnt = (tms - self.window) // self.stride + 1
@@ -116,7 +158,7 @@ class TimeFeatureDataset(BaseDataset):
             major_class = self.get_major_class(self.labels[i*self.stride:i*self.stride+self.window])
             label[major_class] = 1
 
-            features = self.calculate_features(image)
+            features = self.calculate_features(image.T)
             features = self.feature_norm(features)
 
             feature_images.append(features)

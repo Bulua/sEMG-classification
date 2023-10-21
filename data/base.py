@@ -7,9 +7,10 @@ import numpy as np
 import pywt
 import torch
 import torch.nn as nn
+from tqdm import tqdm
 from scipy.signal import butter, filtfilt, iirnotch
 from torch.utils.data import Dataset
-from utils.path_util import PROJECT_PATH, create_dir
+from utils.path_util import PROJECT_PATH, DATA_PATH, create_dir
 from utils.regex import find_data_txt
 
 
@@ -23,9 +24,12 @@ class BaseDataset(Dataset):
                 denoise, 
                 save_action_detect_result=False,
                 save_processing_result=False,
+                save_data=False,
                 verbose=False):
         
+        self.sample_rate = 1000
         self.classes = classes
+        self.subjects = subjects
         self.dataset_path = dataset_path
         self.save_action_detect_result = save_action_detect_result
         self.save_processing_result = save_processing_result
@@ -38,6 +42,8 @@ class BaseDataset(Dataset):
 
         if verbose:
             print(subjects, '共产生{}的活动段肌电数据'.format(self.signal.shape))
+        if save_data:
+            self.save(self.signal, self.labels)
 
     def semg2label(self):
         semg, label = [], []
@@ -118,8 +124,13 @@ class BaseDataset(Dataset):
     def load_data(self, subjects, normal, denoise,):
         # subject: {label: data}
         subject2data = {}
+        subjects = subjects if isinstance(subjects, list) else [subjects]
 
-        for subject in subjects if isinstance(subjects, list) else [subjects]:
+        for subject in tqdm(subjects, 
+                            desc='load data', 
+                            total=len(subjects),
+                            leave=True):  
+                            
             subject_path = join(self.dataset_path, subject)
             gestures = sorted(os.listdir(subject_path))
             # label: data
@@ -234,6 +245,21 @@ class BaseDataset(Dataset):
         coeffs_thresholde = [pywt.threshold(detail, threshold, mode='soft') for detail in coeffs[1:]]
         denoised_channel = pywt.waverec([coeffs[0]] + coeffs_thresholde, wavelet)
         return denoised_channel
+
+    def save(self, datas, labels):
+        assert len(self.subjects) == 1 , '仅能保存一个人的数据,多人数据请设置save_data=False...'
+        
+        for subject in tqdm(self.subjects, 
+                            desc='save data', 
+                            total=len(self.subjects),
+                            leave=True):
+            p = create_dir(join(DATA_PATH, subject))
+
+            if not os.path.exists(join(p, 'signal.npy')):
+                np.save(join(p, 'signal.npy'), datas)
+            if not os.path.exists(join(p, 'labels.npy')):   
+                np.save(join(p, 'labels.npy'), labels)
+        print('signal, labels数据保存完毕!')
 
     def __getitem__(self, index):
         pass
