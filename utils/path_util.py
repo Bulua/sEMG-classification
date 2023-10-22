@@ -15,4 +15,6 @@ def create_dir(p):
     return p
 
 
+def exist_path(p):
+    return os.path.exists(p)
 # print(DATA_PATH)

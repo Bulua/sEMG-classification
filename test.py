@@ -7,11 +7,21 @@ from os.path import join
 from tqdm import tqdm
 from utils.ops import Profile
 from utils.path_util import DATA_PATH, PROJECT_PATH, create_dir
+from models.feature_selector import FeatureSelectNet
 
 
-a = None
-if not a:
-    print(1)
+input = torch.ones((32, 4, 8))
+model = FeatureSelectNet(
+    input_shape=input.shape,
+    hidden_size=32,
+    num_layers=4,
+    bias=True,
+    batch_first=True,
+)
+input = input.to('cuda')
+model = model.to('cuda')
+output = model(input)
+print(output.shape)
 
 # rnn = nn.LSTM(10, 20, 2, batch_first=True)
 # input = torch.randn(3, 5, 10)

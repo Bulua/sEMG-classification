@@ -10,7 +10,7 @@ import torch.nn as nn
 from tqdm import tqdm
 from scipy.signal import butter, filtfilt, iirnotch
 from torch.utils.data import Dataset
-from utils.path_util import PROJECT_PATH, DATA_PATH, create_dir
+from utils.path_util import PROJECT_PATH, DATA_PATH, create_dir, exist_path
 from utils.regex import find_data_txt
 
 
@@ -35,15 +35,27 @@ class BaseDataset(Dataset):
         self.save_processing_result = save_processing_result
         self.verbose = verbose
 
-        self.subject2data = self.load_data(subjects, normal, denoise,)
-
-        # 将所有数据统一为 信号：标签, (tms, 8) (tms,)
-        self.signal, self.labels = self.semg2label()
+        exist_data_file = [exist_path(join(DATA_PATH, s, 'signal.npy')) for s in self.subjects]
+        if np.all(exist_data_file):
+            print('读取signal、labels数据已存在...,')
+            self.signal, self.labels = self.load_npy()
+        else:
+            self.subject2data = self.load_data(subjects, normal, denoise,)
+            # 将所有数据统一为 信号：标签, (tms, 8) (tms,)
+            self.signal, self.labels = self.semg2label()
 
         if verbose:
             print(subjects, '共产生{}的活动段肌电数据'.format(self.signal.shape))
         if save_data:
             self.save(self.signal, self.labels)
+
+    def load_npy(self):
+        signal = []
+        labels = []
+        for subject in self.subjects:
+            signal.append(np.load(join(DATA_PATH, subject, 'signal.npy')))
+            labels.append(np.load(join(DATA_PATH, subject, 'labels.npy')))
+        return np.concatenate(signal), np.concatenate(labels)
 
     def semg2label(self):
         semg, label = [], []

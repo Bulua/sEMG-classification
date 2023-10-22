@@ -2,6 +2,8 @@ import argparse
 import torch
 
 from torch.utils.data import Subset, DataLoader
+from sklearn.model_selection import KFold
+from commons.runing import train
 
 from data.builder import DatasetBuilder
 from models.feature_selector import FeatureSelectNet
@@ -12,6 +14,7 @@ from utils.prepare import load_trainer_param, prepare_trainer
 
 
 def main(args):
+    device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
     # 构建数据集
     dataset_builder = DatasetBuilder(args)
     dataset = dataset_builder.builder()
@@ -19,17 +22,18 @@ def main(args):
     # 获取训练参数
     trainer_param = load_trainer_param()
     # 网络
-    net = FeatureSelectNet(
-        input_shape=input_shape,
-        hidden_size=hidden_size,
-        num_layers=num_layers,
+    model = FeatureSelectNet(
+        input_shape=(trainer_param['batch_size'], dataset.shape[0], dataset.shape[1]),
+        hidden_size=8,
+        num_layers=1,
         bias=True,
-        dropout=0.5,
+        dropout=0.8,
         classes=8
-    )
-    net.apply(initialize_weights)
+    ).to(device)
+    model.apply(initialize_weights)
     # 优化器、学习率管理
-    optimizer, lr_scheduler = prepare_trainer(net, trainer_param)
+    optimizer, lr_scheduler, loss_func = prepare_trainer(model, trainer_param)
+    
 
     if args.cross_validation > 1:
         k_fold = KFold(n_splits=args.cross_validation)
@@ -40,22 +44,48 @@ def main(args):
             # print(train_idx, valid_idx)
             print('训练集大小: {}, 验证集大小: {}'.format(len(train_set), len(valid_set)))
 
-            train_dataloader = DataLoader(train_set, batch_size=args.batch_size)
-            valid_dataloader = DataLoader(valid_set, batch_size=args.batch_size)
+            train_dataloader = DataLoader(train_set, 
+                                          batch_size=trainer_param['batch_size'],
+                                          shuffle=True, 
+                                          drop_last=True)
+            valid_dataloader = DataLoader(valid_set, 
+                                          batch_size=trainer_param['batch_size'],
+                                          shuffle=True, 
+                                          drop_last=True)
 
             # 开始训练
-            train(train_dataloader, valid_dataloader, args.epochs, args.lr)
+            train(model=model, 
+                  train_dataloader=train_dataloader, 
+                  valid_dataloader=valid_dataloader,
+                  loss_func=loss_func,
+                  epochs=args.epochs, 
+                  optimizer=optimizer, 
+                  lr_scheduler=lr_scheduler,
+                  device=device)
     else:
         train_idx, valid_idx = split_dataset(len(dataset), split_rate=0.7)
         train_set = Subset(dataset, train_idx)
         valid_set = Subset(dataset, valid_idx)
         print('训练集大小: {}, 验证集大小: {}'.format(len(train_set), len(valid_set)))
 
-        train_dataloader = DataLoader(train_set, batch_size=args.batch_size)
-        valid_dataloader = DataLoader(valid_set, batch_size=args.batch_size)
+        train_dataloader = DataLoader(train_set, 
+                                        batch_size=trainer_param['batch_size'],
+                                        shuffle=True, 
+                                        drop_last=True)
+        valid_dataloader = DataLoader(valid_set, 
+                                        batch_size=trainer_param['batch_size'],
+                                        shuffle=True, 
+                                        drop_last=True)
 
         # 开始训练
-        train(train_dataloader, valid_dataloader, args.epochs, args.lr)
+        train(model=model, 
+              train_dataloader=train_dataloader, 
+              valid_dataloader=valid_dataloader,
+              loss_func=loss_func,
+              epochs=trainer_param['epochs'], 
+              optimizer=optimizer, 
+              lr_scheduler=lr_scheduler,
+              device=device)
 
 
 def parse_opt():
@@ -69,14 +99,25 @@ def parse_opt():
                                 # 'user6', 'user7', 'user8', 'user10'], 
                         help='用户')
     parser.add_argument('--classes', type=list, default=8, help='手势数量')
+    parser.add_argument('--data_path', type=str, default='/root/autodl-tmp/resources/dataset/dzp', 
+                        help='数据路径')
+    parser.add_argument('--denoise', type=str, default='Wavelet', 
+                        help='降噪方法, Wavelet、ButterWorth降噪, ...')
+    parser.add_argument('--normalization', type=str, default='z-zero', help='数据标准化方法, min-max, z-zero')
+    parser.add_argument('--active_signal_detect', type=str, default='', help='活动段检测方法, ...')
     parser.add_argument('--features', 
                         # default='row',
-                        default=['MAV', 'WMAV','SSC','ZC','WA','WL', 'RMS','STD','SSI','VAR','AAC','MEAN'], 
+                        default=['MAV', 'WMAV','SSC', 'WL', 'RMS','STD','SSI','VAR','AAC','MEAN'], 
                         help="特征提取方法, \
                         原始特征: row, \
                         时域特征：['MAV', 'WMAV','SSC','ZC','WA','WL','RMS','STD','SSI','VAR','AAC','EAN']")
-    parser.add_argument('--cross_validation', default=5, help='是否采用交叉验证, <=1为不采用, >1采用')
+    parser.add_argument('--window', type=int, default=200, help='滑动窗口长度')
+    parser.add_argument('--stride', type=int, default=100, help='滑动窗口步长')
+    parser.add_argument('--cross_validation', default=1, help='是否采用交叉验证, <=1为不采用, >1采用')
 
+    parser.add_argument('--save_data', type=bool, default=False, help='是否保存features')
+    parser.add_argument('--save_action_detect_result', type=bool, default=True, help='是否保存活动段检测结果图')
+    parser.add_argument('--save_processing_result', type=bool, default=False, help='是否保存信号处理结果图')
     parser.add_argument('--save_model', type=bool, default=True, help='是否保存最优模型')
     parser.add_argument('--save_train_result', type=bool, default=True, help='是否保存训练结果图')
 

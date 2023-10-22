@@ -55,7 +55,7 @@ class LSTMNorm(nn.Module):
         self.input_size = input_size
         self.num_layers = num_layers
         self.hidden_size = hidden_size
-
+        self.bidirectional = bidirectional
 
         self.lstm = nn.LSTM(
             input_size=input_size, 
@@ -72,8 +72,9 @@ class LSTMNorm(nn.Module):
     
     def forward(self, x):
         device = x.device
-        h0 = init.xavier_normal_(torch.empty(self.num_layers, self.batch_size, self.hidden_size)).to(device)
-        c0 = init.xavier_normal_(torch.empty(self.num_layers, self.batch_size, self.hidden_size)).to(device)
+        w = torch.empty(self.num_layers * (2 if self.bidirectional else 1), self.batch_size, self.hidden_size)
+        h0 = init.xavier_normal_(w).to(device)
+        c0 = init.xavier_normal_(w).to(device)
 
         y, (hn, cn) = self.lstm(x, (h0, c0))
         y = self.bn(y)

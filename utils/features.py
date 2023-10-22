@@ -32,8 +32,7 @@ def ZC(data, threshold=10e-7):
     return np.sum(log, axis=0)
 
 def WA(data, threshold=10e-7):
-    abs_diff = np.abs(np.diff(data, axis=0))
-    return np.sum(np.where(abs_diff > threshold, 1.0, 0.), axis=0)
+    return np.abs(np.fft.fft2(data))**2
 
 def WL(data):
     return np.sum(np.abs(np.diff(data, axis=0)), axis=0)
@@ -64,4 +63,4 @@ if __name__ == '__main__':
     data1 = np.array(data)
     data2 = np.array(data)
     # x = data1 * data2
-    print(SSC(data1))
+    print(WA(data1))

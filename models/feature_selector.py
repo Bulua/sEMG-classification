@@ -1,7 +1,7 @@
 import torch
 import torch.nn as nn
 
-from common import LSTMNorm, ConvNorm, LinearNorm
+from models.common import LSTMNorm, ConvNorm, LinearNorm
 
 
 class FeatureSelectNet(nn.Module):
@@ -32,6 +32,7 @@ class FeatureSelectNet(nn.Module):
             dropout=dropout,
             proj_size=proj_size
         )
+        self.a1 = nn.ReLU()
         in_features = hidden_size*input_shape[1]
         self.linear = LinearNorm(
             in_features=in_features,
@@ -46,11 +47,12 @@ class FeatureSelectNet(nn.Module):
         y = torch.flatten(y, start_dim=1)
         y = self.linear(y)
         y = self.out(y)
+        y = nn.functional.softmax(y, dim=0)
         return y
 
 
 if __name__ == '__main__':
-    input = torch.ones((32, 300, 4))
+    input = torch.ones((32, 12, 8))
     model = FeatureSelectNet(
         input_shape=input.shape,
         hidden_size=32,

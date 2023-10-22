@@ -80,6 +80,10 @@ class RowDataset(BaseDataset):
 
     def get_major_class(self, nums):
         return np.argmax(np.bincount(nums))
+    
+    @property
+    def shape(self):
+        return self.images.shape[1:]
 
     def __getitem__(self, index):
         return self.images[index], self.labels[index]
@@ -125,6 +129,7 @@ class TimeFeatureDataset(BaseDataset):
         self.features = features
         # 父类BaseDataset包含 self.signal, self.labels
         self.feature_images, self.feature_image_labels = self.sliding_window()
+        self.feature_images = self.standardize(self.feature_images)
 
         if self.verbose:
             print('特征图处理结果, 生成特征图像: {}, 生成标签: {}'
@@ -158,8 +163,8 @@ class TimeFeatureDataset(BaseDataset):
             major_class = self.get_major_class(self.labels[i*self.stride:i*self.stride+self.window])
             label[major_class] = 1
 
-            features = self.calculate_features(image.T)
-            features = self.feature_norm(features)
+            features = self.calculate_features(image)
+            # features = self.feature_norm(features)
 
             feature_images.append(features)
             feature_image_labels.append(label)
@@ -180,12 +185,22 @@ class TimeFeatureDataset(BaseDataset):
         对每行的特征进行归一化
         '''
         mean = np.mean(features, axis=1, keepdims=True)
-        max = np.max(features, axis=1, keepdims=True)
-        min = np.min(features, axis=1, keepdims=True)
-        return (features - mean) / (max - min)
+        std = np.std(features, axis=1, keepdims=True)
+        return (features - mean) / std
+    
+    def standardize(self, images):
+        # （X-X的均值）/ X的标准差
+        images = (images - np.mean(images, axis=0)[None, :, :]) / np.std(images, axis=0)[None, :, :]
+        return images
+
+    @property
+    def shape(self):
+        return self.feature_images.shape[1:]
 
     def __getitem__(self, index):
-        return self.feature_images[index], self.feature_image_labels[index]
+        feature_images = torch.from_numpy(self.feature_images).to(torch.float)
+        feature_image_labels = torch.from_numpy(self.feature_image_labels).to(torch.float)
+        return feature_images[index], feature_image_labels[index]
 
     def __len__(self,):
         return len(self.feature_images)

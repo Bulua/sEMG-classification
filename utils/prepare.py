@@ -4,12 +4,14 @@ import torch
 def load_trainer_param():
     params = {
         'epochs': 100,
-        'batch_size': 64,
+        'batch_size': 32,
         'lr': 0.001,
-        'optimizer': 'adam',    # sgd、adam、adamw
-        'lr_model': 'StepLR',   # ExponentialLR、StepLR、CosineAnnealingLR
+        'loss_f': 'CrossEntropyLoss',
+        'optim': 'adam',    # sgd、adam、adamw
+        'lr_mode': 'StepLR',   # ExponentialLR、StepLR、CosineAnnealingLR
         'weight_decay': 0.95,   
         'momentum': 0.9,
+        'lr_decay': 1e-6,
         'lr_decay_period': 20,  # 学习率衰减周期
     }
     return params
@@ -40,19 +42,19 @@ def prepare_trainer(model, params):
         raise ValueError("未被支持的optimizer: {}".format(optimizer_name))
     
     lr_mode = params['lr_mode'].lower()
-    if lr_mode == 'StepLR':
+    if lr_mode == 'steplr':
         lr_scheduler = torch.optim.lr_scheduler.StepLR(
             optimizer=optimizer,
             step_size=params['lr_decay_period'],
             gamma=params['lr_decay'],
             last_epoch=-1
         )
-    elif lr_mode == 'CosineAnnealingLR':
+    elif lr_mode == 'cosineannealinglr':
         lr_scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(
             optimizer=optimizer,
             T_max=params['epochs'],
             last_epoch=-1)
-    elif lr_mode == 'ExponentialLR':
+    elif lr_mode == 'exponentiallr':
         lr_scheduler = torch.optim.lr_scheduler.ExponentialLR(
             optimizer=optimizer,
             gamma=params['lr_decay'],
@@ -60,4 +62,11 @@ def prepare_trainer(model, params):
         )
     else:
         raise ValueError("未被支持的lr_mode: {}".format(lr_mode))
-    return optimizer, lr_scheduler
+
+    loss_f = params['loss_f'].lower()
+    if loss_f == 'crossentropyloss':
+        loss_func = torch.nn.CrossEntropyLoss()
+    else:
+        raise ValueError("未被支持的loss_func: {}".format(loss_f))
+
+    return optimizer, lr_scheduler, loss_func
