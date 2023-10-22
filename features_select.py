@@ -6,7 +6,7 @@ from sklearn.model_selection import KFold
 from commons.runing import train
 
 from data.builder import DatasetBuilder
-from models.feature_selector import FeatureSelectNet
+from models.models import FeatureSelectNet, FeatureNet
 from utils.ops import init_seeds, initialize_weights
 from utils.dataset_util import split_dataset
 from utils.prepare import load_trainer_param, prepare_trainer
@@ -22,15 +22,21 @@ def main(args):
     # 获取训练参数
     trainer_param = load_trainer_param()
     # 网络
-    model = FeatureSelectNet(
-        input_shape=(trainer_param['batch_size'], dataset.shape[0], dataset.shape[1]),
-        hidden_size=8,
-        num_layers=1,
-        bias=True,
-        dropout=0.8,
-        classes=8
-    ).to(device)
+    # model = FeatureSelectNet(
+    #     input_shape=(trainer_param['batch_size'], dataset.shape[0], dataset.shape[1]),
+    #     hidden_size=128,
+    #     num_layers=4,
+    #     bias=True,
+    #     dropout=0.,
+    #     classes=8
+    # ).to(device)
+    # ch, h, w = dataset.shape
+    model = FeatureNet(input_shape=(trainer_param['batch_size'], 1, 200, 10),
+                       classes=8).to(device)
     model.apply(initialize_weights)
+
+    # print(model)
+
     # 优化器、学习率管理
     optimizer, lr_scheduler, loss_func = prepare_trainer(model, trainer_param)
     
@@ -64,6 +70,7 @@ def main(args):
                   device=device)
     else:
         train_idx, valid_idx = split_dataset(len(dataset), split_rate=0.7)
+
         train_set = Subset(dataset, train_idx)
         valid_set = Subset(dataset, valid_idx)
         print('训练集大小: {}, 验证集大小: {}'.format(len(train_set), len(valid_set)))

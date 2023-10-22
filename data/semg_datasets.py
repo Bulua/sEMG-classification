@@ -6,6 +6,7 @@ import numpy as np
 from tqdm import tqdm
 from os.path import join
 from .base import BaseDataset
+from sklearn import preprocessing
 from utils.path_util import PROJECT_PATH, DATA_PATH, create_dir
 from utils.features import MAV, WMAV, SSC, ZC, WA, WL, RMS, STD, SSI, VAR, AAC, MEAN
 
@@ -129,7 +130,7 @@ class TimeFeatureDataset(BaseDataset):
         self.features = features
         # 父类BaseDataset包含 self.signal, self.labels
         self.feature_images, self.feature_image_labels = self.sliding_window()
-        self.feature_images = self.standardize(self.feature_images)
+        self.feature_images = np.expand_dims(self.feature_images, axis=1)
 
         if self.verbose:
             print('特征图处理结果, 生成特征图像: {}, 生成标签: {}'
@@ -163,12 +164,12 @@ class TimeFeatureDataset(BaseDataset):
             major_class = self.get_major_class(self.labels[i*self.stride:i*self.stride+self.window])
             label[major_class] = 1
 
-            features = self.calculate_features(image)
-            # features = self.feature_norm(features)
+            features = self.calculate_features(image.T).T
+            features = preprocessing.StandardScaler().fit_transform(features)
 
             feature_images.append(features)
             feature_image_labels.append(label)
-        return np.array(feature_images), np.array(feature_image_labels)
+        return np.array(feature_images, dtype=np.float), np.array(feature_image_labels, dtype=np.float)
 
     def get_major_class(self, nums):
         return np.argmax(np.bincount(nums))
@@ -205,3 +206,40 @@ class TimeFeatureDataset(BaseDataset):
     def __len__(self,):
         return len(self.feature_images)
         
+
+class TimeFeatureDataset(BaseDataset):
+
+    def __init__(self, 
+                dataset_path, 
+                subjects, 
+                classes,
+                features, 
+                window, 
+                stride, 
+                normalization, 
+                denoise, 
+                save_action_detect_result,
+                save_processing_result,
+                save_data,
+                verbose):
+        '''
+            feature: 
+                平均绝对值MAV, 加权平均绝对值WMAV, 斜率符号变化
+                过零点率ZC, 威利森幅值WA, 波形长度WL, 均方根RMS
+                标准差STD, 简单方形积分SSI, 方差VAR, 平均幅度改变AAC
+                均值MEAN
+        '''
+        super(TimeFeatureDataset, self).__init__(dataset_path, 
+                                                    subjects, 
+                                                    classes, 
+                                                    normalization, 
+                                                    denoise, 
+                                                    save_action_detect_result, 
+                                                    save_processing_result,
+                                                    save_data,
+                                                    verbose)
+        self.window = int(window / 1000 * self.sample_rate)
+        self.stride = stride
+        self.features = features
+        # 父类BaseDataset包含 self.signal, self.labels
+        self.feature_images, self.feature_image_labels = self.sliding_window()

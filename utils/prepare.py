@@ -5,11 +5,11 @@ def load_trainer_param():
     params = {
         'epochs': 100,
         'batch_size': 32,
-        'lr': 0.001,
+        'lr': 0.0001,
         'loss_f': 'CrossEntropyLoss',
         'optim': 'adam',    # sgd、adam、adamw
         'lr_mode': 'StepLR',   # ExponentialLR、StepLR、CosineAnnealingLR
-        'weight_decay': 0.95,   
+        'weight_decay': 0.90,   
         'momentum': 0.9,
         'lr_decay': 1e-6,
         'lr_decay_period': 20,  # 学习率衰减周期
