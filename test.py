@@ -7,7 +7,7 @@ from os.path import join
 from tqdm import tqdm
 from utils.ops import Profile
 from utils.path_util import DATA_PATH, PROJECT_PATH, create_dir
-from models.feature_selector import FeatureSelectNet
+from models.models import FeatureSelectNet
 
 
 input = torch.ones((32, 4, 8))

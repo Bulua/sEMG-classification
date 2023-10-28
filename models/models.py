@@ -1,7 +1,7 @@
 import torch
 import torch.nn as nn
 
-from models.common import LSTMNorm, ConvNorm, LinearNorm
+from models.common import LSTMNorm, ConvNorm, LinearNorm, Attention
 
 
 class FeatureSelectNet(nn.Module):

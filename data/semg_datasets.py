@@ -1,4 +1,5 @@
 import os
+import logging
 import torch
 import torch.nn as nn
 import numpy as np
@@ -130,7 +131,7 @@ class TimeFeatureDataset(BaseDataset):
         self.features = features
         # 父类BaseDataset包含 self.signal, self.labels
         self.feature_images, self.feature_image_labels = self.sliding_window()
-        self.feature_images = np.expand_dims(self.feature_images, axis=1)
+        # self.feature_images = np.expand_dims(self.feature_images, axis=1)
 
         if self.verbose:
             print('特征图处理结果, 生成特征图像: {}, 生成标签: {}'
@@ -159,16 +160,14 @@ class TimeFeatureDataset(BaseDataset):
         feature_images, feature_image_labels = [], []
 
         for i in range(cnt):
-            label = np.zeros(self.classes, dtype=np.int)
             image = self.signal[i*self.stride:i*self.stride+self.window, :]
             major_class = self.get_major_class(self.labels[i*self.stride:i*self.stride+self.window])
-            label[major_class] = 1
-
-            features = self.calculate_features(image.T).T
-            features = preprocessing.StandardScaler().fit_transform(features)
+            
+            features = self.calculate_features(image)
+            # features = preprocessing.StandardScaler().fit_transform(features)
 
             feature_images.append(features)
-            feature_image_labels.append(label)
+            feature_image_labels.append(major_class)
         return np.array(feature_images, dtype=np.float), np.array(feature_image_labels, dtype=np.float)
 
     def get_major_class(self, nums):
@@ -207,39 +206,59 @@ class TimeFeatureDataset(BaseDataset):
         return len(self.feature_images)
         
 
-class TimeFeatureDataset(BaseDataset):
+class SemgFeatureDataset:
 
-    def __init__(self, 
-                dataset_path, 
-                subjects, 
-                classes,
-                features, 
-                window, 
-                stride, 
-                normalization, 
-                denoise, 
-                save_action_detect_result,
-                save_processing_result,
-                save_data,
-                verbose):
-        '''
-            feature: 
-                平均绝对值MAV, 加权平均绝对值WMAV, 斜率符号变化
-                过零点率ZC, 威利森幅值WA, 波形长度WL, 均方根RMS
-                标准差STD, 简单方形积分SSI, 方差VAR, 平均幅度改变AAC
-                均值MEAN
-        '''
-        super(TimeFeatureDataset, self).__init__(dataset_path, 
-                                                    subjects, 
-                                                    classes, 
-                                                    normalization, 
-                                                    denoise, 
-                                                    save_action_detect_result, 
-                                                    save_processing_result,
-                                                    save_data,
-                                                    verbose)
-        self.window = int(window / 1000 * self.sample_rate)
-        self.stride = stride
-        self.features = features
-        # 父类BaseDataset包含 self.signal, self.labels
-        self.feature_images, self.feature_image_labels = self.sliding_window()
+    def __init__(self, images, labels, selected_features, standard=True):
+        # 可选的所有特征
+        self.all_features = np.array(['MAV', 'WMAV', 'SSC', 'WL', 'RMS','STD', 'SSI', 'VAR', 'AAC', 'MEAN'])
+
+        self.images = images
+        self.labels = labels
+        # 获取所选特征  (n, 5*f)
+        self.features = self.select_features(images, selected_features)
+        
+        logging.info(f'特征选择处理完毕, 所选特征有: {selected_features}')
+        # 标准化
+        if standard:
+            self.features = preprocessing.StandardScaler().fit_transform(self.features)
+            logging.info(f'特征标准化处理完毕.')
+
+
+    def select_features(self, images, selected_features):
+        if not isinstance(selected_features, np.ndarray):
+            selected_features = np.array(selected_features)
+
+        idxs = np.where(np.isin(self.all_features, selected_features))
+        features = images[:, idxs, :5]
+        features = np.reshape(features, (features.shape[0], -1))
+
+        return features
+
+
+class ACCFeatureDataset:
+
+    def __init__(self, images, labels, selected_features, standard=True):
+        # 可选的所有特征
+        self.all_features = np.array(['MAV', 'WMAV', 'SSC', 'WL', 'RMS','STD', 'SSI', 'VAR', 'AAC', 'MEAN'])
+
+        self.images = images
+        self.labels = labels
+        # 获取所选特征  (n, 3*f)
+        self.features = self.select_features(images, selected_features)
+        
+        logging.info(f'特征选择处理完毕, 所选特征有: {selected_features}')
+        # 标准化
+        if standard:
+            self.features = preprocessing.StandardScaler().fit_transform(self.features)
+            logging.info(f'特征标准化处理完毕.')
+    
+
+    def select_features(self, images, selected_features):
+        if not isinstance(selected_features, np.ndarray):
+            selected_features = np.array(selected_features)
+
+        idxs = np.where(np.isin(self.all_features, selected_features))
+        features = images[:, idxs, 5:]
+        features = np.reshape(features, (features.shape[0], -1))
+
+        return features

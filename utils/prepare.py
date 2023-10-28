@@ -6,7 +6,7 @@ def load_trainer_param():
         'epochs': 100,
         'batch_size': 32,
         'lr': 0.0001,
-        'loss_f': 'CrossEntropyLoss',
+        'loss_f': 'BCELoss',   # CrossEntropyLoss
         'optim': 'adam',    # sgd、adam、adamw
         'lr_mode': 'StepLR',   # ExponentialLR、StepLR、CosineAnnealingLR
         'weight_decay': 0.90,   
@@ -66,6 +66,8 @@ def prepare_trainer(model, params):
     loss_f = params['loss_f'].lower()
     if loss_f == 'crossentropyloss':
         loss_func = torch.nn.CrossEntropyLoss()
+    elif loss_f == 'bceloss':
+        loss_func = torch.nn.BCELoss()
     else:
         raise ValueError("未被支持的loss_func: {}".format(loss_f))
 

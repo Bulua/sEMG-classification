@@ -2,10 +2,39 @@ import random
 import contextlib
 import time
 import torch
-
+import logging
 import numpy as np
+import matplotlib.pyplot as plt
 
 from torch import nn
+
+
+def plot_save(x, y, path, figname='', figsize=(8, 15)):
+    x = [str(i) for i in x]
+    if figname == '':
+        figname = random.randint(0, 100)
+
+    plt.figure(figsize=figsize, dpi=80)
+
+    plt.bar(x, y)
+    min_y, max_y = np.min(y) - 0.05, np.max(y) + 0.02
+    plt.xticks(range(len(x)), x, rotation=-45, ha='left')
+    for i, h in enumerate(y):
+        plt.text(i, h, s=round(h, 3), ha='center')
+
+    plt.xlabel('feature')
+    plt.ylabel('acc(%)')
+    plt.ylim(min_y, max_y)
+
+    plt.savefig(f'{path}/{figname}.jpg')
+    plt.close()
+    logging.info(f'fig save path:{path}/{figname}.jpg')
+
+
+# x = range(10)
+# y = range(10)
+
+
 
 class Profile(contextlib.ContextDecorator):
 
