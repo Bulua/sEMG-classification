@@ -51,8 +51,8 @@ def evaluate(model,
 
         pred = model(images)
         _, idxs_pred = torch.max(pred, dim=1)
-        _, idxs_true = torch.max(labels, dim=1)
-        acc_num += torch.eq(idxs_pred, idxs_true).sum()
+        # _, idxs_true = torch.max(labels, dim=1)
+        acc_num += torch.eq(idxs_pred, labels).sum()
 
         loss = loss_func(pred, labels)
         acc_loss += loss
@@ -84,8 +84,8 @@ def train_one_epoch(model,
 
         pred = model(images)
         _, idxs_pred = torch.max(pred, dim=1)
-        _, idxs_true = torch.max(labels, dim=1)
-        acc_num += torch.eq(idxs_pred, idxs_true).sum()
+        # _, idxs_true = torch.max(labels, dim=1)
+        acc_num += torch.eq(idxs_pred, labels).sum()
 
         loss = loss_func(pred, labels)
         loss.backward()

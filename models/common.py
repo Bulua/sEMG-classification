@@ -35,6 +35,50 @@ class ConvNorm(nn.Module):
         x = self.bn(x)
         return x
 
+class Conv1dNorm(nn.Module):
+
+    def __init__(self, in_ch, out_ch, k_size, p, s):
+        super(Conv1dNorm, self).__init__()
+        self.conv = nn.Conv1d(in_channels=in_ch, 
+                              out_channels=out_ch,
+                              kernel_size=k_size,
+                              padding='same' if p == -1 else 'valid',
+                              stride=s)
+        self.norm = nn.BatchNorm1d(out_ch)
+
+    def forward(self, x):
+        y = self.conv(x)
+        y = self.norm(y)
+        return y
+
+class ResidualConv(nn.Module):
+
+    def __init__(self, in_ch, out_ch, k_size, p, s):
+        super(ResidualConv, self).__init__()
+        self.conv1 = nn.Conv1d(in_channels=in_ch, 
+                              out_channels=out_ch,
+                              kernel_size=k_size,
+                              padding='same' if p == -1 else 'valid',
+                              stride=s)
+        self.linear = nn.Conv1d(in_channels=out_ch, 
+                              out_channels=out_ch // 2,
+                              kernel_size=1,
+                              padding='same' if p == -1 else 'valid',
+                              stride=s)
+        self.conv2 = nn.Conv1d(in_channels=out_ch // 2, 
+                              out_channels=out_ch,
+                              kernel_size=k_size,
+                              padding='same' if p == -1 else 'valid',
+                              stride=s)
+        self.act = nn.ReLU()
+
+    def forward(self, x):
+        x = self.conv1(x)
+        y = self.linear(x)
+        y = self.conv2(y)
+        y = self.act(y)
+        return x + y
+
 
 class LSTMNorm(nn.Module):
 

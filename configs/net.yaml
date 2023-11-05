@@ -1,0 +1,26 @@
+e1:
+    # Conv1dNorm: [from, repeats, module, [in_ch, out_ch, k_s, padding, stride]]  padding:-1==same
+    # MaxPooling1d: [from, repeats, module, [k_s, padding, stride]]
+    
+  - [-1, 1, Conv1dNorm,   [1, 32, 3, -1, 1]]    # (32, 32, 25)
+  - [-1, 1, MaxPool1d,    [2, 1, 2]]            # (32, 32, 13)
+  - [-1, 1, ResidualConv, [32, 64, 3, -1, 1]]   # (32, 64, 13)  (13 + 2*x - 2) / 2 + 1 = 7
+  - [-1, 1, MaxPool1d,    [2, 1, 2]]            # (32, 64, 7)
+  - [-1, 1, ResidualConv, [64, 128, 3, -1, 1]]  # (32, 128, 7)
+
+e2:
+  - [-1, 1, ResidualConv, [1, 64, 3, -1, 1]]    # (32, 64, 12)
+  - [-1, 1, MaxPool1d,    [2, 1, 2]]            # (32, 64, 7)
+  - [-1, 1, ResidualConv, [64, 128, 3, -1, 1]]  # (32, 128, 7)
+  
+# att:
+#   - [-1, 1, Concat, []]
+#   - [-1, 1, Attention, []]
+
+head:
+    # (32, 128, 14)
+    # Linear: [from, repeat, module, [in_feature, out_feature, bias(1:True, 0:False)]]
+  - [-1, 1, MaxPool1d, [2, 0, 2]]              # (32, 128, 7)
+  - [-1, 1, Conv1dNorm, [128, 64, 7, 0, 1]]    # (32, 64, 1)
+  - [-1, 1, Linear,     [64, 32, 0]]           # (32, 32)
+  - [-1, 1, Linear,     [32, 8, 0]]            # (32, 8)
