@@ -167,7 +167,7 @@ class Net(nn.Module):
         for m in self.model['head']:
             y = torch.squeeze(m(y), dim=-1)
         # shape: (32, 128, 19)
-        y = nn.Softmax(dim=1)(y)
+        # y = nn.Softmax(dim=1)(y)
         return y
 
 

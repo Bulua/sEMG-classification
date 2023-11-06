@@ -18,6 +18,7 @@ from utils.prepare import load_trainer_param, prepare_trainer
 
 def main(args):
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+    subject = args.subjects[0]
 
     # 构建数据集
     dataset_builder = DatasetBuilder(args)
@@ -54,6 +55,7 @@ def main(args):
     optimizer, lr_scheduler, loss_func = prepare_trainer(net, trainer_param)
 
     if args.cross_validation > 1:
+        histories = []
         k_fold = KFold(n_splits=args.cross_validation)
 
         for train_idx, valid_idx in k_fold.split(dataset):
@@ -66,7 +68,15 @@ def main(args):
             valid_dataloader = DataLoader(valid_set, batch_size=trainer_param['batch_size'])
 
             # 开始训练
-            train(train_dataloader, valid_dataloader, args.epochs, args.lr)
+            loss_acc_history = train(model=net, 
+                                    train_dataloader=train_dataloader, 
+                                    valid_dataloader=valid_dataloader, 
+                                    loss_func=loss_func,
+                                    epochs=trainer_param['epochs'], 
+                                    optimizer=optimizer,
+                                    lr_scheduler=lr_scheduler,
+                                    device=device)
+            histories.append(loss_acc_history)
     else:
         train_idx, valid_idx = split_dataset(len(dataset), split_rate=0.7)
         train_set = Subset(dataset, train_idx)
@@ -77,14 +87,15 @@ def main(args):
         valid_dataloader = DataLoader(valid_set, batch_size=trainer_param['batch_size'], drop_last=True)
 
         # 开始训练
-        train(model=net, 
-              train_dataloader=train_dataloader, 
-              valid_dataloader=valid_dataloader, 
-              loss_func=loss_func,
-              epochs=trainer_param['epochs'], 
-              optimizer=optimizer,
-              lr_scheduler=lr_scheduler,
-              device=device)
+        loss_acc_history = train(model=net, 
+                                 train_dataloader=train_dataloader, 
+                                 valid_dataloader=valid_dataloader, 
+                                 loss_func=loss_func,
+                                 epochs=trainer_param['epochs'], 
+                                 optimizer=optimizer,
+                                 lr_scheduler=lr_scheduler,
+                                 device=device)
+        loss_acc_history.plot_and_save(save_name=f'{subject}.jpg', dpi=150)
 
 
 def parse_opt():
@@ -93,7 +104,7 @@ def parse_opt():
 
     parser.add_argument('--model', type=str, default='', help='网络模型')
     parser.add_argument('--subjects', type=list, 
-                        default=['user1'], 
+                        default=['user4'], 
                         # default=['user1', 'user2', 'user3', 'user4', 'user5', 
                                 # 'user6', 'user7', 'user8', 'user10'], 
                         help='用户')

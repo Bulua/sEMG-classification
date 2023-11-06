@@ -2,6 +2,8 @@ import sys
 import torch
 
 from tqdm import tqdm
+from utils.ops import LossAccHistory
+from utils.path_util import ACC_LOSS_PATH, MODELS_PATH
 
 
 def train(model, 
@@ -13,6 +15,12 @@ def train(model,
           lr_scheduler,
           device):
     
+    train_accs = []
+    train_losses = []
+    valid_accs = []
+    valid_losses = []
+    
+
     for epoch in range(epochs):
         train_loss, train_acc = train_one_epoch(model=model,
                                                 dataloader=train_dataloader,
@@ -21,14 +29,22 @@ def train(model,
                                                 epoch=epoch,
                                                 device=device)
         lr_scheduler.step()
-
         valid_loss, valid_acc = evaluate(model=model,
                                          dataloader=valid_dataloader,
                                          loss_func=loss_func,
                                          epoch=epoch,
                                          device=device)
-
-        # print(train_loss, train_acc, valid_loss, valid_acc)
+        train_accs.append(train_acc)
+        train_losses.append(train_loss)
+        valid_accs.append(valid_acc)
+        valid_losses.append(valid_loss)
+    
+    loss_acc_history = LossAccHistory(train_accs, 
+                                      train_losses, 
+                                      valid_accs, 
+                                      valid_losses,
+                                      path=ACC_LOSS_PATH)
+    return loss_acc_history
 
 @torch.no_grad()
 def evaluate(model, 

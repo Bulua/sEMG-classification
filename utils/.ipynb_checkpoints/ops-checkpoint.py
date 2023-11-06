@@ -34,7 +34,7 @@ def plot_save(x, y, path, figname='', figsize=(8, 15)):
 
 # x = range(10)
 # y = range(10)
-class LossAccHistory:
+class LossHistory:
     
     def __init__(self, train_acc, train_loss, valid_acc, valid_loss, path):
         assert len(train_acc) == len(train_loss) == len(valid_acc) == len(valid_loss), \
