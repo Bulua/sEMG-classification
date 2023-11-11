@@ -6,7 +6,7 @@ def load_trainer_param():
         'epochs': 200,
         'batch_size': 32,
         'lr': 0.000001,
-        # 'lr': 0.00001,
+        # 'lr': 0.0001,
         'loss_f': 'CrossEntropyLoss',   # CrossEntropyLoss
         'optim': 'adamw',    # sgd、adam、adamw
         'lr_mode': 'StepLR',   # ExponentialLR、StepLR、CosineAnnealingLR

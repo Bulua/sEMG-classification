@@ -9,16 +9,16 @@ from models.models import Net
 from commons.runing import train
 
 from torch.utils.data import Subset, DataLoader, TensorDataset
-from sklearn.model_selection import KFold
+from sklearn.model_selection import KFold, StratifiedKFold
 from data.builder import DatasetBuilder
 from utils.dataset_util import split_dataset
-from utils.ops import initialize_weights, init_seeds
+from utils.ops import initialize_weights, init_seeds, Profile
 from utils.prepare import load_trainer_param, prepare_trainer
 
 
 def main(args):
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-    subject = args.subjects[0]
+    subject = args.subjects[0] if len(args.subjects) == 1 else '{}-{}'.format(args.subjects[0], args.subjects[-1])
 
     # 构建数据集
     dataset_builder = DatasetBuilder(args)
@@ -56,28 +56,49 @@ def main(args):
 
     if args.cross_validation > 1:
         histories = []
-        k_fold = KFold(n_splits=args.cross_validation)
-
-        for train_idx, valid_idx in k_fold.split(dataset):
-            train_set = Subset(dataset, train_idx)
-            valid_set = Subset(dataset, valid_idx)
+        profiles = [Profile() for _ in range(args.cross_validation)]
+        # k_fold = KFold(n_splits=args.cross_validation,
+        #                shuffle=True, 
+        #                random_state=0)
+        sk_fold = StratifiedKFold(n_splits=args.cross_validation,
+                                 shuffle=True, 
+                                 random_state=0)
+        # for i, (train_idx, valid_idx) in enumerate(k_fold.split(dataset)):
+        #     train_set = Subset(dataset, train_idx)
+        #     valid_set = Subset(dataset, valid_idx)
+        for i, (train_idx, valid_idx) in enumerate(sk_fold.split(features, labels)):
+            train_set = TensorDataset(features[train_idx], labels[train_idx])
+            valid_set = TensorDataset(features[valid_idx], labels[valid_idx])
             # print(train_idx, valid_idx)
             print('训练集大小: {}, 验证集大小: {}'.format(len(train_set), len(valid_set)))
 
-            train_dataloader = DataLoader(train_set, batch_size=trainer_param['batch_size'])
-            valid_dataloader = DataLoader(valid_set, batch_size=trainer_param['batch_size'])
-
+            train_dataloader = DataLoader(train_set, 
+                                          batch_size=trainer_param['batch_size'], 
+                                          drop_last=True,
+                                          shuffle=True)
+            valid_dataloader = DataLoader(valid_set, 
+                                          batch_size=trainer_param['batch_size'], 
+                                          drop_last=True, 
+                                          shuffle=True)
+            subject_ = '%s_cv%d_%d' % (subject, args.cross_validation, i)
             # 开始训练
-            loss_acc_history = train(model=net, 
-                                    train_dataloader=train_dataloader, 
-                                    valid_dataloader=valid_dataloader, 
-                                    loss_func=loss_func,
-                                    epochs=trainer_param['epochs'], 
-                                    optimizer=optimizer,
-                                    lr_scheduler=lr_scheduler,
-                                    device=device)
+            with profiles[i]:
+                loss_acc_history = train(subject=subject_,
+                                         model=net, 
+                                         train_dataloader=train_dataloader, 
+                                         valid_dataloader=valid_dataloader, 
+                                         loss_func=loss_func,
+                                         epochs=trainer_param['epochs'], 
+                                         optimizer=optimizer,
+                                         lr_scheduler=lr_scheduler,
+                                         device=device)
             histories.append(loss_acc_history)
+        valid_accs = [np.max(h.valid_acc) for h in histories]
+        for p in profiles:
+            print(p)
+        print(f'{args.cross_validation} 折交叉验证的平均准确率为: {round(np.mean(valid_accs) * 100, 2)}%')
     else:
+        profile = Profile()
         train_idx, valid_idx = split_dataset(len(dataset), split_rate=0.7)
         train_set = Subset(dataset, train_idx)
         valid_set = Subset(dataset, valid_idx)
@@ -87,15 +108,20 @@ def main(args):
         valid_dataloader = DataLoader(valid_set, batch_size=trainer_param['batch_size'], drop_last=True)
 
         # 开始训练
-        loss_acc_history = train(model=net, 
-                                 train_dataloader=train_dataloader, 
-                                 valid_dataloader=valid_dataloader, 
-                                 loss_func=loss_func,
-                                 epochs=trainer_param['epochs'], 
-                                 optimizer=optimizer,
-                                 lr_scheduler=lr_scheduler,
-                                 device=device)
+        with profile:
+            loss_acc_history = train(subject=subject,
+                                     model=net, 
+                                     train_dataloader=train_dataloader, 
+                                     valid_dataloader=valid_dataloader, 
+                                     loss_func=loss_func,
+                                     epochs=trainer_param['epochs'], 
+                                     optimizer=optimizer,
+                                     lr_scheduler=lr_scheduler,
+                                     device=device)
         loss_acc_history.plot_and_save(save_name=f'{subject}.jpg', dpi=150)
+
+        print(profile)
+        print(f'随机验证的准确率为: {round(np.max(loss_acc_history.valid_acc) * 100, 2)}%')
 
 
 def parse_opt():
@@ -104,7 +130,7 @@ def parse_opt():
 
     parser.add_argument('--model', type=str, default='', help='网络模型')
     parser.add_argument('--subjects', type=list, 
-                        default=['user4'], 
+                        default=['user1'], 
                         # default=['user1', 'user2', 'user3', 'user4', 'user5', 
                                 # 'user6', 'user7', 'user8', 'user10'], 
                         help='用户')
@@ -123,9 +149,9 @@ def parse_opt():
                         时域特征：['MAV', 'WMAV', 'SSC', 'WL', 'RMS','STD', 'SSI', 'VAR', 'AAC', 'MEAN']")
     parser.add_argument('--window', type=int, default=200, help='滑动窗口长度')
     parser.add_argument('--stride', type=int, default=100, help='滑动窗口步长')
-    parser.add_argument('--cross_validation', default=1, help='是否采用交叉验证, <=1为不采用, >1采用')
+    parser.add_argument('--cross_validation', default=5, help='是否采用交叉验证, <=1为不采用, >1采用')
 
-    parser.add_argument('--save_data', type=bool, default=True, help='是否保存features')
+    parser.add_argument('--save_data', type=bool, default=False, help='是否保存features')
     parser.add_argument('--save_action_detect_result', type=bool, default=True, help='是否保存活动段检测结果图')
     parser.add_argument('--save_processing_result', type=bool, default=True, help='是否保存信号处理结果图')
     parser.add_argument('--save_model', type=bool, default=True, help='是否保存最优模型')

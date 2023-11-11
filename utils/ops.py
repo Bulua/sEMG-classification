@@ -32,8 +32,6 @@ def plot_save(x, y, path, figname='', figsize=(8, 15)):
     logging.info(f'fig save path:{path}/{figname}.jpg')
 
 
-# x = range(10)
-# y = range(10)
 class LossAccHistory:
     
     def __init__(self, train_acc, train_loss, valid_acc, valid_loss, path):
@@ -74,21 +72,17 @@ class Profile(contextlib.ContextDecorator):
         self.cuda = torch.cuda.is_available()
 
     def __enter__(self):
-        """Start timing."""
         self.start = self.time()
         return self
 
     def __exit__(self, type, value, traceback):  # noqa
-        """Stop timing."""
         self.dt = self.time() - self.start  # delta-time
         self.t += self.dt  # accumulate dt
 
     def __str__(self):
-        """Returns a human-readable string representing the accumulated elapsed time in the profiler."""
         return f'Elapsed time is {self.t} s'
 
     def time(self):
-        """Get current time."""
         if self.cuda:
             torch.cuda.synchronize()
         return time.time()

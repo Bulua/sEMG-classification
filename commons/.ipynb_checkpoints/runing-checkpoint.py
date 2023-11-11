@@ -1,7 +1,6 @@
-import os
 import sys
 import torch
-import copy
+import deep_copy
 
 from os.path import join
 from tqdm import tqdm
@@ -47,11 +46,8 @@ def train(subject,
         
         if best_valid_acc < valid_acc:
             best_valid_acc = valid_acc
-            torch.save(model, join(MODELS_PATH, '%s.pt' % subject))
-
-    acc = round(best_valid_acc * 100, 2)
-    os.rename(join(MODELS_PATH, '%s.pt' % subject), join(MODELS_PATH, '%s_%.2lf.pt' % (subject, acc)))
-    print(f'The best acc is {acc}%')
+            best_model = deep_copy(model)
+    torch.save(best_model, join(MODELS_PATH, model_name))
     
     loss_acc_history = LossAccHistory(train_accs, 
                                       train_losses, 
