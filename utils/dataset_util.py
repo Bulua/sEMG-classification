@@ -12,4 +12,4 @@ def split_dataset(size, split_rate=0.7):
     idx = list(range(size))
     np.random.shuffle(idx)
     train_size = int(size * split_rate)
-    return idx[:train_size], idx[train_size:]    
+    return idx[:train_size], idx[train_size:]
