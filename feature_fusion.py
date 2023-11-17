@@ -16,6 +16,7 @@ from utils.path_util import DATA_PATH
 from data.data_fusion import DataFusion
 from utils.features import *
 from utils.dataset_util import split_dataset
+from utils.ops import Profile
 
 
 def calculate_features(image, fs):
@@ -190,19 +191,23 @@ def main():
     subjects = ['user1']
     modes = ['kalman', 'cca', 'serial', 'gcca']
     accs = {}
+    profiles = [Profile(msg=m) for m in modes]
 
-    for m in modes:
-        if m == 'kalman':
-            acc = do_kalman(subjects)
-        elif m == 'cca':
-            acc = do_cca(subjects)
-        elif m == 'serial':
-            acc = do_serial(subjects)
-        elif m == 'gcca':
-            acc = do_gcca(subjects)
+    for i, m in enumerate(modes):
+        with profiles[i]:
+            if m == 'kalman':
+                acc = do_kalman(subjects)
+            elif m == 'cca':
+                acc = do_cca(subjects)
+            elif m == 'serial':
+                acc = do_serial(subjects)
+            elif m == 'gcca':
+                acc = do_gcca(subjects)
         accs[m] = round(acc * 100, 2)
     
     # {'kalman': 83.35, 'cca': 63.52, 'serial': 86.11, 'gcca': 83.21}
+    for p in profiles:
+        print(p)
     print(accs)
     
     

@@ -66,8 +66,9 @@ class LossAccHistory:
 
 class Profile(contextlib.ContextDecorator):
 
-    def __init__(self, t=0.0) -> None:
+    def __init__(self, msg='', t=0.0) -> None:
         super().__init__()
+        self.msg = msg
         self.t = t
         self.cuda = torch.cuda.is_available()
 
@@ -80,7 +81,7 @@ class Profile(contextlib.ContextDecorator):
         self.t += self.dt  # accumulate dt
 
     def __str__(self):
-        return f'Elapsed time is {self.t} s'
+        return f'{self.msg} elapsed time is {self.t} s'
 
     def time(self):
         if self.cuda:
