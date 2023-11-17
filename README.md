@@ -11,6 +11,7 @@
 
 # 2、项目目录解释
 
+- [commons](./commons/): 公共使用的模块文件。
 - [configs](./configs/)：该目录存放一些配置文件，包括网络结构的配置文件等。
 - [data](./data/)：数据读取、处理、生成。
 - [models](./models/)：模型各个模块的设计。
@@ -18,3 +19,5 @@
 - [utils](./utils/)：工具箱，包含项目用到的一些工具函数。
 - [train.py](./train.py)：数据训练文件。
 - [valid.py](./valid.py)：数据验证文件。
+- [*_features_select.py](./*_features_select.py): 特征选择文件。
+- [*.ipynb](*.ipynb): 项目开发过程中的一些测试样例。
