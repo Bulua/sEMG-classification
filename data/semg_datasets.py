@@ -168,7 +168,7 @@ class TimeFeatureDataset(BaseDataset):
 
             feature_images.append(features)
             feature_image_labels.append(major_class)
-        return np.array(feature_images, dtype=np.float), np.array(feature_image_labels, dtype=np.float)
+        return np.array(feature_images, dtype=np.float32), np.array(feature_image_labels, dtype=np.float32)
 
     def get_major_class(self, nums):
         return np.argmax(np.bincount(nums))

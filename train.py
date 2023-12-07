@@ -28,7 +28,6 @@ def main(args):
         labels=dataset.feature_image_labels,
         selected_features=['WL', 'MEAN', 'SSC', 'WMAV', 'STD'],
         standard=True
-
     )
     acc_dataset = ACCFeatureDataset(
         images=dataset.feature_images,
@@ -46,7 +45,7 @@ def main(args):
     # 获取训练参数
     trainer_param = load_trainer_param()
     # 网络
-    with open('configs/net.yaml', 'r') as f:
+    with open('/root/autodl-tmp/workspace/sEMG-classification/configs/net.yaml', 'r') as f:
         net_args = yaml.safe_load(f)
     net = Net((trainer_param['batch_size'], 1, 25+12), net_args).to(device)
 
@@ -130,7 +129,7 @@ def parse_opt():
 
     parser.add_argument('--model', type=str, default='', help='网络模型')
     parser.add_argument('--subjects', type=list, 
-                        default=['user1'], 
+                        default=['user9'], 
                         # default=['user1', 'user2', 'user3', 'user4', 'user5', 
                                 # 'user6', 'user7', 'user8', 'user10'], 
                         help='用户')
@@ -149,9 +148,9 @@ def parse_opt():
                         时域特征：['MAV', 'WMAV', 'SSC', 'WL', 'RMS','STD', 'SSI', 'VAR', 'AAC', 'MEAN']")
     parser.add_argument('--window', type=int, default=200, help='滑动窗口长度')
     parser.add_argument('--stride', type=int, default=100, help='滑动窗口步长')
-    parser.add_argument('--cross_validation', default=5, help='是否采用交叉验证, <=1为不采用, >1采用')
+    parser.add_argument('--cross_validation', default=1, help='是否采用交叉验证, <=1为不采用, >1采用')
 
-    parser.add_argument('--save_data', type=bool, default=False, help='是否保存features')
+    parser.add_argument('--save_data', type=bool, default=True, help='是否保存features')
     parser.add_argument('--save_action_detect_result', type=bool, default=True, help='是否保存活动段检测结果图')
     parser.add_argument('--save_processing_result', type=bool, default=True, help='是否保存信号处理结果图')
     parser.add_argument('--save_model', type=bool, default=True, help='是否保存最优模型')

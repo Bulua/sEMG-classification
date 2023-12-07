@@ -67,7 +67,7 @@ class BaseDataset(Dataset):
                 signal = self.subject2data[subject][gesture]
                 signal_action = self.action_detect(signal, subject, gesture)
                 semg.append(signal_action)
-                label.append(np.ones(signal_action.shape[0], dtype=np.int) * (int(gesture) - 1))
+                label.append(np.ones(signal_action.shape[0], dtype=np.int32) * (int(gesture) - 1))
 
         return np.concatenate(semg), np.concatenate(label)
     

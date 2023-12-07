@@ -188,27 +188,29 @@ def do_serial(subjects):
     return acc
 
 def main():
-    subjects = ['user1']
-    modes = ['kalman', 'cca', 'serial', 'gcca']
-    accs = {}
-    profiles = [Profile(msg=m) for m in modes]
 
-    for i, m in enumerate(modes):
-        with profiles[i]:
-            if m == 'kalman':
-                acc = do_kalman(subjects)
-            elif m == 'cca':
-                acc = do_cca(subjects)
-            elif m == 'serial':
-                acc = do_serial(subjects)
-            elif m == 'gcca':
-                acc = do_gcca(subjects)
-        accs[m] = round(acc * 100, 2)
-    
-    # {'kalman': 83.35, 'cca': 63.52, 'serial': 86.11, 'gcca': 83.21}
-    for p in profiles:
-        print(p)
-    print(accs)
+    subjects = ['user1','user2','user3','user4','user5','user6','user7','user8','user9','user10']
+    results = {}
+    for subject in subjects:
+        modes = ['kalman', 'cca', 'serial', 'gcca']
+        accs = {}
+        profiles = [Profile(msg=m) for m in modes]
+
+        for i, m in enumerate(modes):
+            with profiles[i]:
+                if m == 'kalman':
+                    acc = do_kalman([subject])
+                elif m == 'cca':
+                    acc = do_cca([subject])
+                elif m == 'serial':
+                    acc = do_serial([subject])
+                elif m == 'gcca':
+                    acc = do_gcca([subject])
+            accs[m] = round(acc * 100, 2)
+        for p in profiles:
+            print(p)
+        results[subject] = accs
+    print(results)
     
     
 if __name__ == '__main__':
